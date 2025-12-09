@@ -5,20 +5,17 @@
 #define TEMPERATURENOMINAL 25
 #define NTC_PIN A5
 
-double getTempTermistorNTCBeta(const uint16_t analogValue, const uint16_t serialResistance, const uint16_t bCoefficient, const uint16_t nominalResistance)
+double getTempTermistorNTCBeta(const float R_NTC, const uint16_t bCoefficient, const uint16_t nominalResistance)
 {
-  float resistance = 0.0, temp = 0.0;
-  resistance = (serialResistance / ((float)analogValue)) * ADC_RESOLUTION - serialResistance;   // convert the value to resistance
-  temp = 1.0 / ((1.0 / (TEMPERATURENOMINAL + 273.15)) + (1.0 / bCoefficient) * log(resistance / nominalResistance)); // 1.0/( (1/To)+(1/B)*ln(R/Ro) )
+  float temp = 0.0;
+  temp = 1.0 / ((1.0 / (TEMPERATURENOMINAL + 273.15)) + (1.0 / bCoefficient) * log(R_NTC / nominalResistance)); // 1.0/( (1/To)+(1/B)*ln(R/Ro) )
   return (temp - 273.15);
 }
 
-double getTempTermistorNTCSteinhart(const uint16_t analogValue, const uint16_t serialResistance, const float a, const float b, const float c)
+double getTempTermistorNTCSteinhart(const float Log_RNTC, const float a, const float b, const float c)
 {
-  float resistance = 0.0, temp = 0.0;
-  resistance = (serialResistance / ((float)analogValue)) * ADC_RESOLUTION - serialResistance;  // convert the value to resistance
-  resistance = log(resistance);
-  temp = 1.0 / (a + b * resistance + c * resistance * resistance * resistance);
+  float temp = 0.0;
+  temp = 1.0 / (a + b * Log_RNTC + c * Log_RNTC * Log_RNTC * Log_RNTC);
   return (temp - 273.15);
 }
 
@@ -28,21 +25,22 @@ void setup()
   delay(1000);          // INTERVALO DE 1 SEGUNDO
 }
 
-#define TIME_DELAY_MS1 1000 //Aguarda um segundo 
-uint64_t previousTimeMS1 = 0;
-
+#define R_SERIE 1000  // Resistor de 10k ohms em serie com o NTC
 void loop()
 {
   const uint64_t currentTimeMS = millis();
-  if ((currentTimeMS - previousTimeMS1) >= TIME_DELAY_MS1)
+
+  static uint64_t previousTimeMS1 = 0;
+  if ((currentTimeMS - previousTimeMS1) >= 1000)
   {
-    uint16_t adc = analogRead(NTC_PIN);
-    float temperature1 = getTempTermistorNTCBeta(adc,                    // Analog Value
-                                                 10000,                  // Nominal resistance at 25 ºC
-                                                 3455,                   // thermistor's beta coefficient
-                                                 10000);                 // Value of the series resistor
-    float temperature2 = getTempTermistorNTCSteinhart(adc,               // Analog Value
-                                                      10000,             // Value of the series resistor
+    previousTimeMS1 = currentTimeMS;
+    uint16_t analogValue = analogRead(NTC_PIN);
+    const float R_NTC = R_SERIE * ((ADC_RESOLUTION / (float)analogValue) - 1);   // convert the value to resistance
+
+    float temperature1 = getTempTermistorNTCBeta(R_NTC,                    // Analog Value
+                                                 10000,      // Nominal resistance at 25 ºC
+                                                 3455); // thermistor's beta coefficient
+    float temperature2 = getTempTermistorNTCSteinhart(log(R_NTC),      // Ln da Resistance do NTC
                                                       0.001129241,       // a
                                                       0.0002341077,      // b
                                                       0.00000008775468); // c
