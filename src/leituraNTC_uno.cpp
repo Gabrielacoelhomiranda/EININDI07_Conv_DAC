@@ -1,6 +1,8 @@
 // This library works only with the following circuit topology
 // Vcc---NTC---ADC---SERIES_RESISTOR---GND
 #include <Arduino.h>
+
+#define R_SERIE 10000  // Resistor de 10k ohms em serie com o NTC
 #define ADC_RESOLUTION 1023.0
 #define TEMP_REFERENCE 273.15
 #define NTC_PIN A5
@@ -23,7 +25,6 @@ void setup()
   delay(1000);            // INTERVALO DE 1 SEGUNDO
 }
 
-#define R_SERIE 10000  // Resistor de 10k ohms em serie com o NTC
 void loop()
 {
   const uint64_t currentTimeMS = millis();
